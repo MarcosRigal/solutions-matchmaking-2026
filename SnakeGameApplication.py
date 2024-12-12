@@ -1,9 +1,10 @@
 import time
-import curses
 import random
 import argparse
 import rti.connextdds as dds
 from collections import deque, defaultdict
+import os
+import keyboard
 
 from utils import (
     ShapeTypeExtended,
@@ -30,11 +31,7 @@ class SnakeGameApplication:
         self.snake_positions = defaultdict(deque)
         self.food_position = initial_food_position
         self.leaderboard = defaultdict(int)
-        self.screen = curses.initscr()
-        curses.noecho()
-        curses.cbreak()
-        self.screen.keypad(True)
-        self.screen.nodelay(True)
+        self.screen = None
 
     def place_food(self):
         if self.food_position is None:
@@ -75,11 +72,10 @@ class SnakeGameApplication:
                     self.place_food()
 
     def display_leaderboard(self):
-        self.screen.clear()
-        self.screen.addstr(0, 0, "Leaderboard:")
+        os.system('cls' if os.name == 'nt' else 'clear')
+        print("Leaderboard:")
         for idx, (snake_id, score) in enumerate(sorted(self.leaderboard.items(), key=lambda item: item[1], reverse=True), start=1):
-            self.screen.addstr(idx, 0, f"{snake_id}: {score}")
-        self.screen.refresh()
+            print(f"{snake_id}: {score}")
 
     def run(self):
         self.place_food()
@@ -90,10 +86,7 @@ class SnakeGameApplication:
             time.sleep(0.1)
 
     def __del__(self):
-        curses.nocbreak()
-        self.screen.keypad(False)
-        curses.echo()
-        curses.endwin()
+        pass
 
 
 def parse_args():
