@@ -1,97 +1,99 @@
-# Snake Game Workshop
+# Snake Game Workshop: Reference Solutions
 
-This repository contains the code and resources for the Snake Game Workshop, designed for university-level participants to learn about game programming, distributed systems, and real-time data exchange using RTI Connext DDS.
+This repository contains completed implementations of the three exercises in the
+[participant repository](https://github.com/MarcosRigal/matchmaking-2026).
+Use the starter repository when taking the workshop; use this one to compare
+answers or prepare a demonstration.
 
-## Overview
+## Documentation route
 
-The workshop consists of two main components:
-1. **Snake Game Application**: The controller for managing the game, displaying a leaderboard, and placing food items on the game board.
-2. **Snake Application**: Individual snake instances that move around the game board, controlled by either user input or as an autonomous bot.
+1. [Participant setup and troubleshooting](https://github.com/MarcosRigal/matchmaking-2026/blob/main/README.md):
+   Python, platform dependencies, licensing, and launch commands.
+2. [Participant workbook](https://github.com/MarcosRigal/matchmaking-2026/blob/main/WORKSHOP.md):
+   DDS concepts, ordered steps, progressive hints, and checkpoints.
+3. [Solution walkthrough](SOLUTIONS.md): explanations and answers for each TODO,
+   verification cases, and facilitator notes.
 
-Both applications leverage the [RTI Connext DDS](https://www.rti.com/products/connext-dds-professional) for real-time data communication.
+The documentation follows the current code, including its limitations; it does
+not introduce additional exercises into the starter source.
 
----
+## Quick start for a reference demonstration
 
-## Files in the Repository
+Use supported CPython, preferably **3.11 or 3.12**, and an RTI license.
+`rti.connext==7.7.0` requires Python 3.10+ with a matching platform wheel.
+See the participant setup for the supported wheel architectures.
 
-### 1. `utils.py`
-Defines common data structures used in the game:
-- **ShapeFillKind**: Enum defining different fill styles for game shapes.
-- **ShapeType** and **ShapeTypeExtended**: Classes representing objects on the game board, such as food and snakes, with attributes like position, color, size, and fill type.
-
----
-
-### 2. `SnakeGameApplication.py`
-Manages the overall game logic, including:
-- Placing food on the board using distributed data structures.
-- Displaying the leaderboard with player scores.
-- Handling updates from all participating snakes via DDS.
-
-#### Key Features:
-- **Real-Time Communication**: Uses DDS for exchanging position and score updates between snakes and the game controller.
-- **Food Management**: Automatically places food at random positions and detects collisions with snakes.
-- **Leaderboard**: Tracks and displays scores based on snake performance.
-
-Run with:
 ```bash
-python SnakeGameApplication.py --domain-id <DDS_DOMAIN_ID>
+git clone https://github.com/MarcosRigal/solutions-matchmaking-2026.git
+cd solutions-matchmaking-2026
 ```
 
----
+Linux/macOS:
 
-### 3. `SnakeApplication.py`
-Implements the snake entity for the game. A snake can be:
-- **Controlled by a User**: Movement directed using arrow keys.
-- **Autonomous Bot**: Calculates its movement based on food position.
-
-#### Key Features:
-- **Real-Time Updates**: Continuously publishes its position to the DDS topic.
-- **Food Awareness**: Reads food positions and adjusts movement accordingly.
-- **Boundary Wrapping**: Ensures the snake wraps around the board edges.
-
-Run with:
 ```bash
-python SnakeApplication.py --snake-id <UNIQUE_ID> [--domain-id <DDS_DOMAIN_ID>] [--is-bot]
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install "rti.connext==7.7.0" "keyboard==0.13.5"
+export RTI_LICENSE_FILE="/absolute/path/to/rti_license.dat"
 ```
 
----
+Windows PowerShell:
 
-## Workshop Goals
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install "rti.connext==7.7.0" "keyboard==0.13.5"
+$env:RTI_LICENSE_FILE = "C:\absolute\path\to\rti_license.dat"
+```
 
-By completing the workshop, participants will:
-- Understand the basics of game development, including input handling, object updates, and collision detection.
-- Learn how distributed systems communicate using DDS.
-- Gain hands-on experience in implementing a real-time multiplayer application.
+Substitute your license path; do not publish license contents. If PowerShell
+blocks activation, invoke `.\.venv\Scripts\python.exe` directly instead of
+`python`. Activate the environment and configure the license in each terminal.
 
----
+The minimal install above covers the imports in the scripts.
+[requirements.txt](requirements.txt) also lists packages such as `python-xlib`
+that are not portable across all workshop platforms.
 
-## Getting Started
+Verify that DDS can initialize:
 
-### Prerequisites
-- Python 3.8 or higher
-- RTI Connext DDS libraries installed
-- `curses` library for terminal-based UI
+```bash
+python -c "import rti.connextdds as dds; participant = dds.DomainParticipant(0); print('DDS participant OK')"
+```
 
-### Installation
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/MarcosRigal/matchmaking-2024.git
-   ```
-2. Install required Python packages:
-   ```bash
-   pip install -r requirements.txt
-   ```
+Then, in terminal 1, start a bot on your assigned domain (example: `0`):
 
-### Running the Game
-1. Start the game controller:
-   ```bash
-   python SnakeGameApplication.py
-   ```
-2. Start individual snake applications:
-   ```bash
-   python SnakeApplication.py --snake-id "Blue"
-   python SnakeApplication.py --snake-id "Yellow" --is-bot
-   ```
+```bash
+python SnakeApplication.py --snake-id YELLOW --domain-id 0 --is-bot
+```
 
----
+On Windows, use [SnakeApplicationWindows.py](SnakeApplicationWindows.py) instead.
+For human control, omit `--is-bot`; arrow keys turn and `q` quits.
 
+In terminal 2, after allowing discovery, start one controller:
+
+```bash
+python SnakeGameApplication.py --domain-id 0 --initial-food-x 100 --initial-food-y 100
+```
+
+The bot should collect food and appear on the text leaderboard. Use `Ctrl+C`
+to stop the bot and controller. If the bot never receives food, restart the
+controller after discovery: the current controller publishes food only at
+startup and after collection, so late readers can miss the initial sample.
+
+## Source map and display expectations
+
+| File | Responsibility |
+| --- | --- |
+| [utils.py](utils.py) | Shared keyed shape types |
+| [SnakeGameApplication.py](SnakeGameApplication.py) | Food publication, collection detection, text leaderboard |
+| [SnakeApplication.py](SnakeApplication.py) | Unix keyboard input or bot; DDS snake-head publication |
+| [SnakeApplicationWindows.py](SnakeApplicationWindows.py) | Windows keyboard input or bot; same DDS behavior |
+
+The scripts **do not render a game board**. For graphics, use facilitator-provided
+RTI Shapes Demo subscribers for `Square` and `Circle` on the same domain, with
+compatible types and QoS. Start the food subscriber before the controller.
+Do not add Shapes publishers during the basic demo.
+
+Only head positions are published. Growth, snake-to-snake collisions, optimal
+pathfinding, and persistent scores are not implemented. See
+[the walkthrough](SOLUTIONS.md) for the exact behavior and verification steps.
